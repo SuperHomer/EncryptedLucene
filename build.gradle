@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.apache.lucene', name: 'lucene-core', version: '8.6.3'
+    compile group: 'org.apache.lucene', name: 'lucene-analyzers-common', version: '8.6.3'
+    compile group: 'org.apache.lucene', name: 'lucene-demo', version: '8.6.3'
+    compile group: 'org.apache.lucene', name: 'lucene-queryparser', version: '8.6.3'
+    compile group: 'org.apache.lucene', name: 'lucene-codecs', version: '8.6.3'
+    compile group: 'org.apache.directory.studio', name: 'org.apache.commons.io', version: '2.4'
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+}
