@@ -34,7 +34,9 @@ public class EncryptedCompressor extends Compressor {
 
 
         out.writeVInt(encryptedBytes.length);
-        out.writeBytes(encryptedBytes, off, encryptedBytes.length);
+        //System.out.println("ENC size: "+encryptedBytes.length);
+        //out.writeBytes(encryptedBytes, off, encryptedBytes.length);
+        out.writeBytes(encryptedBytes, 0, encryptedBytes.length);
     }
 
     @Override

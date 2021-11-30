@@ -31,9 +31,12 @@ public class EncryptedDecompressor extends Decompressor {
         int encryptedLength = in.readVInt();
         BytesRef encryptedBytes = new BytesRef(512);
         if (encryptedLength > encryptedBytes.bytes.length) {
-            encryptedBytes.bytes = ArrayUtil.grow(encryptedBytes.bytes, encryptedLength);
+            encryptedBytes = new BytesRef(encryptedLength);
+            //encryptedBytes.bytes = ArrayUtil.grow(encryptedBytes.bytes, encryptedLength);
         }
-        in.readBytes(encryptedBytes.bytes, offset, encryptedLength);
+
+        //in.readBytes(encryptedBytes.bytes, offset, encryptedLength);
+        in.readBytes(encryptedBytes.bytes, 0, encryptedLength);
         byte[] decryptedBytes = this.encryptionEngine.decrypt(encryptedBytes.bytes);
         ByteArrayDataInput decryptedDataInput = new ByteArrayDataInput(decryptedBytes, 0, encryptedBytes.length);
         decompressor.decompress(decryptedDataInput, originalLength, offset, length, bytes);

@@ -17,5 +17,6 @@ dependencies {
     compile group: 'org.apache.lucene', name: 'lucene-queryparser', version: '8.6.3'
     compile group: 'org.apache.lucene', name: 'lucene-codecs', version: '8.6.3'
     compile group: 'org.apache.directory.studio', name: 'org.apache.commons.io', version: '2.4'
+    compile group: 'org.apache.commons', name: 'commons-compress', version: '1.1'
     compile fileTree(include: ['*.jar'], dir: 'libs')
 }
