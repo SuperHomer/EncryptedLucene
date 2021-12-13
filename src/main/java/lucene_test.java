@@ -13,6 +13,7 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.*;
 import org.apache.lucene.document.Field.*;
 import org.apache.lucene.index.*;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
@@ -30,6 +31,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +54,9 @@ public class lucene_test {
         }
     }
 
-    private static final StandardAnalyzer analyzer = new StandardAnalyzer(new CharArraySet(Arrays.asList("a", "and", "around", "every", "for", "from", "in", "is", "it", "not", "on", "one", "the", "to", "under"), true));
+    private static final CharArraySet stopWords = new CharArraySet(Arrays.asList("a", "and", "around", "every", "for", "from", "in", "is", "it", "not", "on", "one", "the", "to", "under"), true);
+    //private static final StandardAnalyzer analyzer = new StandardAnalyzer(stopWords);
+    private static final StandardAnalyzer analyzer = new StandardAnalyzer();
 
     private static ArrayList<ArrayList<String>> books = new ArrayList<ArrayList<String>>();
 
@@ -59,20 +64,26 @@ public class lucene_test {
 
     public static void main(String[] args) throws IOException, org.apache.lucene.queryparser.classic.ParseException, ParserConfigurationException, SAXException {
 
-        //feedBooks();
+        feedBooks();
         //feedBooksGutengerg();
-        feedWikipedia();
-        //System.out.println(books.size());
+        //feedWikipedia();
+        System.out.println("Documents feeded: "+books.size());
 
-        IndexWriter indexWriter = setupIndex();
+        /*final double sum = books.stream().map(x -> x.get(0).split(" ").length).reduce(0, (x,y) -> x+y );
+        final double avg = sum / books.size();
+        System.out.println(avg);*/
+
+
+        IndexWriter indexWriter = setupIndex("EncryptedLucene86Codec", false);
         doIndex(indexWriter,books.size());
+        System.out.println("--> Indexation finished");
+        doSearch(false);
+        System.out.println("--> Search finished");
 
-//        for (int i = 0; i < 9; i++) {
-//            indexWriter = setupIndex();
-//            doIndex(indexWriter,1);
-//        }
 
-        doSearch();
+        //processPerformanceTests("Lucene86Codec", 10);
+
+
 
         //CheckIndex checkIndex = new CheckIndex(index);
         //checkIndex.setInfoStream(System.out, true);
@@ -101,6 +112,49 @@ public class lucene_test {
         }*/
 
 
+    }
+
+    public static void processPerformanceTests(String codecName, int nbTest) throws IOException, ParseException {
+        IndexWriter indexWriter;
+        long[] time = new long[3];
+        String separator = ";";
+        ArrayList<String> results;
+        for (int i = 0; i < nbTest; i++) {
+            results = new ArrayList<>();
+            indexWriter = setupIndex(codecName, false);
+            time[0] = System.currentTimeMillis();
+            doIndex(indexWriter,books.size());
+            time[1] = System.currentTimeMillis();
+            doSearch(false);
+            time[2] = System.currentTimeMillis();
+            results.add(codecName+separator+"Index time"+separator+"ms"+separator+Long.toString(time[1]-time[0]));
+            results.add(codecName+separator+"Search time"+separator+"ms"+separator+Long.toString(time[2]-time[1]));
+            results.add(codecName+separator+"Index size"+separator+"bytes"+separator+Long.toString(getIndexSize()));
+            storeTestData(results);
+        }
+    }
+
+    public static void storeTestData(ArrayList<String> rows) throws IOException {
+        System.out.println("WRITING RESULTS !!");
+        File fout = new File("/Users/yoanmarti/Documents/Master/TM/code/results.csv");
+        FileOutputStream fos = new FileOutputStream(fout, true);
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+        for (String row:
+             rows) {
+            bw.write(row);
+            bw.newLine();
+        }
+
+        bw.close();
+    }
+
+    public static long getIndexSize() throws IOException {
+        Path folder = Paths.get(indexPath);
+        long size = Files.walk(folder)
+                .filter(p -> p.toFile().isFile())
+                .mapToLong(p -> p.toFile().length())
+                .sum();
+        return size;
     }
 
     public static void feedBooks() throws IOException {
@@ -189,9 +243,9 @@ public class lucene_test {
     }
 
 
-    private static IndexWriter setupIndex() throws IOException {
+    private static IndexWriter setupIndex(String codecName, boolean debug) throws IOException {
         ServiceLoader<Codec> serviceLoader = ServiceLoader.load(Codec.class);
-        serviceLoader.forEach((service) -> System.out.println(service.getName()));
+        //serviceLoader.forEach((service) -> System.out.println(service.getName()));
 
 //        WhitespaceAnalyzer analyzer = new WhitespaceAnalyzer();
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -199,14 +253,29 @@ public class lucene_test {
         //SimpleTextCodec codec = new SimpleTextCodec();
         //EncryptedSimpleTextCodec codec = new EncryptedSimpleTextCodec();
        //Lucene86Codec codec = new Lucene86Codec(); // default one
-       EncryptedLucene86Codec codec = new EncryptedLucene86Codec();
-
-
-        codec.setEncryptionEngine(new AESEngine(indexPath));
-
+       //EncryptedLucene86Codec codec = new EncryptedLucene86Codec();
+       Codec codec;
+       switch (codecName) {
+           case "SimpleTextCodec":
+               codec = new SimpleTextCodec();
+               break;
+           case "EncryptedSimpleTextCodec":
+               codec = new EncryptedSimpleTextCodec();
+               ((EncryptedSimpleTextCodec) codec).setEncryptionEngine(new AESEngine(indexPath));
+               break;
+           case "EncryptedLucene86Codec":
+               codec = new EncryptedLucene86Codec();
+               ((EncryptedLucene86Codec) codec).setEncryptionEngine(new AESEngine(indexPath));
+               break;
+           case "Lucene86Codec":
+           default:
+               codec = new Lucene86Codec();
+               break;
+       }
         config.setCodec(codec);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        config.setInfoStream(System.out); // used to debug index operations
+        if (debug)
+            config.setInfoStream(System.out); // used to debug index operations
 
         return new IndexWriter(index, config);
     }
@@ -240,9 +309,9 @@ public class lucene_test {
         indexWriter.close();
     }
 
-    private static void doSearch() throws IOException, org.apache.lucene.queryparser.classic.ParseException {
+    private static void doSearch(boolean scoreExplanation) throws IOException, org.apache.lucene.queryparser.classic.ParseException {
 
-        String queryStr = "moon";
+        String queryStr = "blue";
         Query q = new QueryParser("content", analyzer).parse(queryStr);
 
         int hitsPerPage = 10;
@@ -252,7 +321,7 @@ public class lucene_test {
         TopDocs topDocs = indexSearcher.search(q, hitsPerPage);
         ScoreDoc[] hits = topDocs.scoreDocs;
 
-        System.out.println("Found " + hits.length + " hits.");
+        System.out.println("Found " + hits.length + " hits for " + queryStr);
         Document d;
         Terms termVector;
         BytesRef term = null;
@@ -278,13 +347,19 @@ public class lucene_test {
                     //System.out.println("p=" + p + ", o=" + o + ", l=" + term.length + ", f=" + fr + ", s=" + term.utf8ToString());
                 }
             }
+            final int substringSize = 20;
+            try{
+                System.out.println((i + 1) + ". " + " ..."+d.get("content").substring(offset-substringSize,offset+substringSize).replace("\n", "")+"... " + "\t - \t" + d.get("document")  + "\t - \t" + hits[i].score);
+            } catch (Exception e) {
+                System.out.println((i + 1) + ". " + d.get("content") + "\t - \t" + d.get("document")  + "\t - \t" + hits[i].score);
+            }
 
-            System.out.println((i + 1) + ". " + " ..."+d.get("content").substring(offset-20,offset+20).replace("\n", "")+"... " + "\t - \t" + d.get("document")  + "\t - \t" + hits[i].score);
         }
 
-        /*Explanation explanation = indexSearcher.explain(q,0);
-        System.out.println(explanation.toString());*/
-
+        if (scoreExplanation) {
+            Explanation explanation = indexSearcher.explain(q,0);
+            System.out.println(explanation.toString());
+        }
     }
 
 }

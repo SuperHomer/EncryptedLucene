@@ -27,14 +27,15 @@ public class EncryptedLucene86Codec extends FilterCodec {
         return new EncryptedLucene50StoredFieldsFormat(new Lucene50StoredFieldsFormat(), encryptionEngine);
     }
 
-    @Override
+    /*@Override
     public TermVectorsFormat termVectorsFormat() {
         return new EncryptedLucene50TermVectorsFormat();
-    }
+    }*/
 
 
     @Override
     public PostingsFormat postingsFormat() {
-        return new Lucene84PostingsFormat();//new EncryptedLucene84PostingsFormat("EncryptedLucene84", new Lucene84PostingsFormat());
+        // return new Lucene84PostingsFormat();//
+        return new EncryptedLucene84PostingsFormat("EncryptedLucene84", new Lucene84PostingsFormat(), encryptionEngine);
     }
 }
